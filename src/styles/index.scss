@@ -1,0 +1,20 @@
+* {
+  // 禁止 iOS/Edge 滚动回弹效果
+  overscroll-behavior: none;
+
+  // 隐藏滚动条
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+body {
+  font-family: 'PingFang SC';
+  font-size: 14px;
+  line-height: 20px;
+}
+
+:root {
+  --page-h: max(100vh, 700px);
+  --page-w: max(100vw, 1200px);
+}
