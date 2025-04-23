@@ -288,7 +288,27 @@ const showFiles = computed(() => {
 });
 </script>
 <template>
-  <div p-16px box-border flex flex-col gap-20px class="h-[var(--page-h)]">
+  <div
+    p-16px
+    box-border
+    relative
+    flex
+    flex-col
+    gap-20px
+    class="h-[var(--page-h)]"
+  >
+    <a
+      href="https://github.com/lisonge/language-convert-kit"
+      target="_blank"
+      referrerpolicy="no-referrer"
+      absolute
+      top-16px
+      right-16px
+      block
+    >
+      <SvgIcon name="github" text-24px />
+    </a>
+
     <div flex gap-24px items-center>
       <div text="20px/28px">国际化数据转换工具</div>
       <NButton type="primary" size="tiny" @click="switchMode">
