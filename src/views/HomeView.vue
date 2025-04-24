@@ -7,11 +7,12 @@ import {
   NDataTable,
   NIcon,
   useMessage,
+  NTooltip,
   type DataTableColumns,
 } from 'naive-ui';
 import { computed, shallowRef, watch } from 'vue';
 import type { WorkBook, ColInfo } from 'xlsx';
-import { useStorage } from '@vueuse/core';
+import { useEventListener, useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import dayjs from 'dayjs';
 
@@ -59,13 +60,14 @@ const safeRun = <T>(fn: () => T): T | undefined => {
 };
 
 const jsonFiles = shallowRef<JsonFileExt[]>([]);
-const addJsonFile = async () => {
-  const files: JsonFileExt[] = await fileOpen({
-    mimeTypes: ['application/json'],
-    multiple: true,
-  })
-    .then((r) => r.filter((f) => f.name.endsWith('.json')))
-    .catch(() => Array<JsonFileExt>());
+const addJsonFile = async (_files: File[] | undefined) => {
+  const files: JsonFileExt[] = (
+    _files ??
+    (await fileOpen({
+      mimeTypes: ['application/json'],
+      multiple: true,
+    }).catch(() => Array<JsonFileExt>()))
+  ).filter((f) => f.name.endsWith('.json'));
   await Promise.all(
     files.map(async (f) => {
       f._lang = getLangKeyByName(f.name);
@@ -98,8 +100,8 @@ const removeFile = (f: File) => {
   }
 };
 
-type LangKey = 'zhCN' | 'zhTW' | 'enUS' | 'thTH';
 const allLangLeys = ['zhCN', 'zhTW', 'enUS', 'thTH'] as const;
+type LangKey = (typeof allLangLeys)[number];
 interface I18nItem {
   key: string;
   zhCN?: string;
@@ -177,13 +179,14 @@ const switchMode = () => {
   showData.value = [];
 };
 const xlsxFile = shallowRef<XlsxFileExt>();
-const addXlsxFile = async () => {
-  const file = (await fileOpen({
-    mimeTypes: [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ],
-    multiple: false,
-  }).catch(() => {})) as XlsxFileExt | undefined;
+const addXlsxFile = async (_files: File[] | undefined) => {
+  const file = (_files?.[0] ??
+    (await fileOpen({
+      mimeTypes: [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ],
+      multiple: false,
+    }).catch(() => {}))) as XlsxFileExt | undefined;
   if (!file) return;
   if (!file.name.endsWith('.xlsx')) return;
   const bf = await file.arrayBuffer();
@@ -217,13 +220,39 @@ watch(xlsxFile, async () => {
   });
 });
 
-const addFile = async () => {
+const addFile = async (_files?: File[]) => {
   if (isReadXlsx.value) {
-    await addXlsxFile();
+    await addXlsxFile(_files);
   } else {
-    await addJsonFile();
+    await addJsonFile(_files);
   }
 };
+const getDragEventFiles = (e: DragEvent): File[] => {
+  const files: File[] = [];
+  if (e.dataTransfer?.items) {
+    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+      const item = e.dataTransfer.items[i];
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) {
+          files.push(file);
+        }
+      }
+    }
+  } else {
+    files.push(...Array.from(e.dataTransfer?.files || []));
+  }
+  return files;
+};
+
+useEventListener(document.body, 'drop', async (e) => {
+  e.preventDefault();
+  await addFile(getDragEventFiles(e));
+});
+useEventListener(document.body, 'dragover', (e) => {
+  e.preventDefault();
+});
+
 const exportJson = async () => {
   if (showData.value.length === 0) return;
   if (!xlsxFile.value) return;
@@ -321,7 +350,14 @@ const showFiles = computed(() => {
           {{ isReadXlsx ? 'XLSX -> JSON' : 'JSON -> XLSX' }}
         </template>
       </NButton>
-      <NButton type="primary" @click="addFile" size="tiny"> 导入文件 </NButton>
+      <NTooltip>
+        <template #trigger>
+          <NButton type="primary" @click="addFile()" size="tiny">
+            导入文件
+          </NButton>
+        </template>
+        <template #default> 支持拖拽文件至页面任意位置导入 </template>
+      </NTooltip>
       <template v-if="showData.length">
         <NButton type="primary" @click="exportFile" size="tiny">
           {{ isReadXlsx ? '导出为JSON' : '导出为XLSX' }}
