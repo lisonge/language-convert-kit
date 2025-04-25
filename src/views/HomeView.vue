@@ -10,7 +10,7 @@ import {
   NTooltip,
   type DataTableColumns,
 } from 'naive-ui';
-import { computed, shallowRef, watch } from 'vue';
+import { computed, onMounted, shallowRef, watch } from 'vue';
 import type { WorkBook, ColInfo } from 'xlsx';
 import { useEventListener, useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -315,6 +315,21 @@ const showFiles = computed(() => {
   }
   return jsonFiles.value;
 });
+
+const getIfIsInnerNetwork = async (): Promise<boolean> => {
+  const r = await fetch(
+    atob('aHR0cHM6Ly9iYWNrZW5kLWZlZWRiYWNrLmlxaXlpLmNvbS8='),
+    {
+      mode: 'no-cors',
+    }
+  ).catch(() => {});
+  return Boolean(r);
+};
+
+const isInnerNetwork = shallowRef<boolean>();
+onMounted(async () => {
+  isInnerNetwork.value = await getIfIsInnerNetwork();
+});
 </script>
 <template>
   <div
@@ -364,6 +379,16 @@ const showFiles = computed(() => {
         </NButton>
         <div>{{ `累计 ${showData.length} 条数据` }}</div>
       </template>
+      <div
+        v-if="isInnerNetwork !== undefined"
+        color-transparent
+        bg-transparent
+        transition-colors
+        class="hover:color-black hover:bg-red-2"
+        px-20px
+      >
+        {{ '你在' + (isInnerNetwork ? '内网' : '外网') }}
+      </div>
     </div>
     <div>
       <div flex gap-8px h-36px overflow-x-scroll>
